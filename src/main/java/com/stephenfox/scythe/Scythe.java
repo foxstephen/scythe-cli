@@ -1,6 +1,7 @@
 package com.stephenfox.scythe;
 
 import com.stephenfox.scythe.annotation.Option;
+import com.stephenfox.scythe.annotation.Options;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -23,26 +24,33 @@ public class Scythe {
     for (Field field : clazz.getDeclaredFields()) {
       final Option option = field.getAnnotation(Option.class);
       if (option != null) {
-        final Map<String, Object> parsedOption = parseOption(option, args);
-        System.out.println(parsedOption);
+        final Object optionValue = parseOption(option, args);
+        mappings.put(option.name(), optionValue);
       }
 
+      final Option[] options = field.getAnnotationsByType(Option.class);
+      if (options != null) {
+        for (Option option1 : options) {
+          final Object optionValue = parseOption(option1, args);
+          mappings.put(option1.name(), optionValue);
+        }
+      }
     }
     return mappings;
   }
 
-  private static Map<String, Object> parseOption(Option option, String[] args) {
-    final Map<String, Object> mapping = new HashMap<>(1);
+  private static Object parseOption(Option option, String[] args) {
     final String optionName = option.name();
 
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals(optionName)) {
-        final Object optionValue = args[i + 1]; // TODO: Raise exception if option value is not straight after it.
-        mapping.put(optionName, optionValue);
-        break;
+        if (i + 1 > args.length) {
+          throw new IllegalArgumentException("Option values must appear after the option name");
+        }
+        return args[i + 1];
       }
     }
-    return mapping;
+    return null;
 
   }
 
