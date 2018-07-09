@@ -9,4 +9,5 @@ import java.lang.annotation.RetentionPolicy;
 public @interface Option {
   String name() default "";
   String help() default "No description provided.";
+  Class type() default Object.class;
 }
