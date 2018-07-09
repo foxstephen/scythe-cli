@@ -5,9 +5,11 @@ import com.stephenfox.scythe.annotation.Option;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -40,16 +42,27 @@ public class Scythe {
     for (Method method : clazz.getDeclaredMethods()) {
       final Option option = method.getAnnotation(Option.class);
       if (option != null) {
+        final List<Object> values = new ArrayList<>();
         try {
-          parseOptionValue(args, option, mappings);
-          method.invoke(null, null);
+          parseOptionValue(args, option, values);
+          method.invoke(null, values.toArray());
         } catch (IllegalAccessException | InvocationTargetException e) {
           e.printStackTrace();
         }
       }
 
       final Option[] options = method.getAnnotationsByType(Option.class);
-      if (options != null) {}
+      if (options != null && options.length > 0) {
+        final List<Object> values = new ArrayList<>();
+        for (Option opt : options) {
+          parseOptionValue(args, opt, values);
+        }
+        try {
+          method.invoke(null, values.toArray());
+        } catch (IllegalAccessException | InvocationTargetException e) {
+          e.printStackTrace();
+        }
+      }
     }
 
     return mappings;
@@ -62,9 +75,22 @@ public class Scythe {
 
     final Class<?> type = option.type();
     if (Number.class.isAssignableFrom(type)) {
-      parseNumber(mappings, (Class<? extends Number>) type, option.name(), optionValue);
+      final Number number = parseNumber((Class<? extends Number>) type, optionValue);
+      mappings.put(option.name(), number);
     } else { // Just fall back to string.
       mappings.put(option.name(), optionValue);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void parseOptionValue(String[] cliArgs, Option option, List<Object> values) {
+    final String optionValue = getOptionFromCliArgs(cliArgs, option);
+    final Class<?> type = option.type();
+    if (Number.class.isAssignableFrom(type)) {
+      final Number number = parseNumber((Class<? extends Number>) type, optionValue);
+      values.add(number);
+    } else { // Just fall back to string.
+      values.add(optionValue);
     }
   }
 
@@ -92,16 +118,10 @@ public class Scythe {
   /**
    * Parse any value which extends {@link Number}.
    *
-   * @param mappings The mappings containing the optionName -> optionValue.
    * @param numberClass The concrete number class.
-   * @param optionName The name of the option.
    * @param optionValue The value passed from the cli.
    */
-  private static void parseNumber(
-      Map<String, Object> mappings,
-      Class<? extends Number> numberClass,
-      String optionName,
-      String optionValue) {
+  private static Number parseNumber(Class<? extends Number> numberClass, String optionValue) {
     final Number numberValue;
     if (numberClass.equals(Short.class)) {
       numberValue = Short.valueOf(optionValue);
@@ -116,7 +136,7 @@ public class Scythe {
     } else {
       throw new IllegalArgumentException("Cannot parse " + numberClass);
     }
-    mappings.put(optionName, numberValue);
+    return numberValue;
   }
 
   /**
