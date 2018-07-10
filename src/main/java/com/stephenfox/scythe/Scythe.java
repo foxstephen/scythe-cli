@@ -1,5 +1,8 @@
 package com.stephenfox.scythe;
 
+import static com.stephenfox.scythe.ReflectionUtil.getFieldAnnotations;
+import static com.stephenfox.scythe.ReflectionUtil.getMethodAnnotations;
+
 import com.stephenfox.scythe.annotation.Option;
 
 import java.lang.reflect.Field;
@@ -9,88 +12,88 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class Scythe {
 
-  @SuppressWarnings({"unchecked", "ConstantConditions"})
-  public static Map<String, Object> cli(Class<?> clazz, String[] args) {
-    if (args.length < 1) {
+  private final String[] cliArgs;
+  private final Class<?> mainClass;
+
+  public static Scythe cli(String[] cliArgs, Class<?> mainClass) {
+    return new Scythe(cliArgs, mainClass);
+  }
+
+  private Scythe(String[] cliArgs, Class<?> mainClass) {
+    this.cliArgs = sanitize(cliArgs);
+    this.mainClass = mainClass;
+  }
+
+  public Map<String, Object> parse() {
+    if (cliArgs.length < 1) {
       return Collections.emptyMap();
     }
 
-    args = sanitize(args);
-
-    final Map<String, Object> mappings = new HashMap<>();
-
-    for (Field field : clazz.getDeclaredFields()) {
-      final Option option = field.getAnnotation(Option.class);
-      if (option != null) {
-        parseOptionValue(args, option, mappings);
+    // If annotations were declared via a field, parse them.
+    final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, mainClass);
+    if (fieldAnnotations.size() > 0) {
+      final Map<Option, Object> parsedOptions = parseOptions(fieldAnnotations);
+      final Map<String, Object> map = new HashMap<>(parsedOptions.size());
+      for (Map.Entry<Option, Object> entry : parsedOptions.entrySet()) {
+        map.put(entry.getKey().name(), entry.getValue());
       }
+      return map;
+    }
 
-      final Option[] options = field.getAnnotationsByType(Option.class);
-      if (options != null) {
-        for (Option opt : options) {
-          parseOptionValue(args, opt, mappings);
-        }
+    // If annotations were declared via a method, parse them.
+    final Optional<ReflectionUtil.MethodAnnotationPair<Option>> methodAnnotations =
+        getMethodAnnotations(Option.class, mainClass);
+    if (methodAnnotations.isPresent()) {
+      ReflectionUtil.MethodAnnotationPair<Option> methodAnnotationPair = methodAnnotations.get();
+      final Map<Option, Object> parsedOptions = parseOptions(methodAnnotationPair.annotations);
+      final Object[] values = parsedOptions.values().toArray();
+
+      try {
+        methodAnnotationPair.method.invoke(null, values);
+      } catch (IllegalAccessException | InvocationTargetException e) {
+        e.printStackTrace();
       }
     }
 
-    for (Method method : clazz.getDeclaredMethods()) {
-      final Option option = method.getAnnotation(Option.class);
-      if (option != null) {
-        final List<Object> values = new ArrayList<>();
-        try {
-          parseOptionValue(args, option, values);
-          method.invoke(null, values.toArray());
-        } catch (IllegalAccessException | InvocationTargetException e) {
-          e.printStackTrace();
-        }
-      }
+    return null;
+  }
 
-      final Option[] options = method.getAnnotationsByType(Option.class);
-      if (options != null && options.length > 0) {
-        final List<Object> values = new ArrayList<>();
-        for (Option opt : options) {
-          parseOptionValue(args, opt, values);
-        }
-        try {
-          method.invoke(null, values.toArray());
-        } catch (IllegalAccessException | InvocationTargetException e) {
-          e.printStackTrace();
-        }
-      }
+  /**
+   * Parse the command line arguments for the option annotations declared.
+   *
+   * @param options The option annotations declared.
+   * @return A mapping of an {@code Option} to the value found in the command line arguments.
+   */
+  private Map<Option, Object> parseOptions(List<Option> options) {
+    final Map<Option, Object> mappings = new LinkedHashMap<>();
+    for (Option option : options) {
+      mappings.put(option, getOptionValue(cliArgs, option));
     }
-
     return mappings;
   }
 
   @SuppressWarnings("unchecked")
-  private static void parseOptionValue(
-      String[] cliArgs, Option option, Map<String, Object> mappings) {
+  private static Object getOptionValue(String[] cliArgs, Option option) {
     final String optionValue = getOptionFromCliArgs(cliArgs, option);
 
-    final Class<?> type = option.type();
-    if (Number.class.isAssignableFrom(type)) {
-      final Number number = parseNumber((Class<? extends Number>) type, optionValue);
-      mappings.put(option.name(), number);
-    } else { // Just fall back to string.
-      mappings.put(option.name(), optionValue);
+    if (option.isFlag()) {
+      return parseBoolean(optionValue);
     }
-  }
 
-  @SuppressWarnings("unchecked")
-  private static void parseOptionValue(String[] cliArgs, Option option, List<Object> values) {
-    final String optionValue = getOptionFromCliArgs(cliArgs, option);
     final Class<?> type = option.type();
     if (Number.class.isAssignableFrom(type)) {
-      final Number number = parseNumber((Class<? extends Number>) type, optionValue);
-      values.add(number);
+      return parseNumber((Class<? extends Number>) type, optionValue);
     } else { // Just fall back to string.
-      values.add(optionValue);
+      return optionValue;
     }
   }
 
@@ -106,9 +109,14 @@ public class Scythe {
 
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals(optionName)) {
-        if (i + 1 > args.length) {
+        if (option.isFlag()) {
+          return "true";
+        }
+
+        if (i + 2 > args.length) {
           throw new IllegalArgumentException("Option values must appear after the option name");
         }
+
         return args[i + 1];
       }
     }
@@ -137,6 +145,10 @@ public class Scythe {
       throw new IllegalArgumentException("Cannot parse " + numberClass);
     }
     return numberValue;
+  }
+
+  private static Boolean parseBoolean(String optionValue) {
+    return Boolean.valueOf(optionValue);
   }
 
   /**
