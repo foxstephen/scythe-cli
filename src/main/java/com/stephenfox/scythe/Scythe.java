@@ -5,22 +5,21 @@ import static com.stephenfox.scythe.ReflectionUtil.getMethodAnnotations;
 
 import com.stephenfox.scythe.annotation.Option;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class Scythe {
 
+  private static final Comparator<Option> optionComparator = Comparator.comparingInt(Option::order);
   private final String[] cliArgs;
   private final Class<?> mainClass;
 
@@ -74,7 +73,7 @@ public class Scythe {
    * @return A mapping of an {@code Option} to the value found in the command line arguments.
    */
   private Map<Option, Object> parseOptions(List<Option> options) {
-    final Map<Option, Object> mappings = new LinkedHashMap<>();
+    final Map<Option, Object> mappings = new TreeMap<>(optionComparator);
     for (Option option : options) {
       mappings.put(option, getOptionValue(cliArgs, option));
     }
@@ -83,18 +82,25 @@ public class Scythe {
 
   @SuppressWarnings("unchecked")
   private static Object getOptionValue(String[] cliArgs, Option option) {
-    final String optionValue = getOptionFromCliArgs(cliArgs, option);
+    final Optional<String> optionalValue = getOptionValueFromCliArgs(cliArgs, option);
 
-    if (option.isFlag()) {
-      return parseBoolean(optionValue);
+    if (!option.required() && !optionalValue.isPresent()) {
+      return null;
     }
 
-    final Class<?> type = option.type();
-    if (Number.class.isAssignableFrom(type)) {
-      return parseNumber((Class<? extends Number>) type, optionValue);
-    } else { // Just fall back to string.
-      return optionValue;
+    if (optionalValue.isPresent()) {
+      if (option.isFlag()) {
+        return parseBoolean(optionalValue.get());
+      }
+
+      final Class<?> type = option.type();
+      if (Number.class.isAssignableFrom(type)) {
+        return parseNumber((Class<? extends Number>) type, optionalValue.get());
+      } else { // Just fall back to string.
+        return optionalValue.get();
+      }
     }
+    return Optional.empty();
   }
 
   /**
@@ -104,23 +110,26 @@ public class Scythe {
    * @param option The option to get from the cli args.
    * @return The string representation of the option value.
    */
-  private static String getOptionFromCliArgs(String[] args, Option option) {
+  private static Optional<String> getOptionValueFromCliArgs(String[] args, Option option) {
     final String optionName = option.name();
 
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals(optionName)) {
         if (option.isFlag()) {
-          return "true";
+          return Optional.of("true");
         }
 
         if (i + 2 > args.length) {
           throw new IllegalArgumentException("Option values must appear after the option name");
         }
-
-        return args[i + 1];
+        return Optional.of(args[i + 1]);
       }
     }
-    return null;
+
+    if (option.required()) {
+      throw new RequiredOptionException("Required option " + optionName + " not found");
+    }
+    return Optional.empty();
   }
 
   /**

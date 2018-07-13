@@ -10,8 +10,11 @@ import java.lang.annotation.Target;
 @Repeatable(Options.class)
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
 public @interface Option {
+
   String name() default "";
-  String help() default "No description provided.";
+  String help() default "";
   Class type() default Object.class;
   boolean isFlag() default false;
+  boolean required() default true;
+  int order() default -1;
 }
