@@ -13,8 +13,9 @@ public @interface Option {
 
   String name() default "";
   String help() default "";
-  Class type() default Object.class;
+  Class type() default String.class;
   boolean isFlag() default false;
   boolean required() default true;
   int order() default -1;
+  boolean multiple() default false;
 }

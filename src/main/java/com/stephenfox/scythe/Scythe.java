@@ -6,17 +6,22 @@ import static com.stephenfox.scythe.ReflectionUtil.getMethodAnnotations;
 import com.stephenfox.scythe.annotation.Option;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+/**
+ * Scythe command line parser.
+ *
+ * @author Stephen Fox.
+ */
 public class Scythe {
 
   private static final Comparator<Option> optionComparator = Comparator.comparingInt(Option::order);
@@ -52,7 +57,8 @@ public class Scythe {
     final Optional<ReflectionUtil.MethodAnnotationPair<Option>> methodAnnotations =
         getMethodAnnotations(Option.class, mainClass);
     if (methodAnnotations.isPresent()) {
-      ReflectionUtil.MethodAnnotationPair<Option> methodAnnotationPair = methodAnnotations.get();
+      final ReflectionUtil.MethodAnnotationPair<Option> methodAnnotationPair =
+          methodAnnotations.get();
       final Map<Option, Object> parsedOptions = parseOptions(methodAnnotationPair.annotations);
       final Object[] values = parsedOptions.values().toArray();
 
@@ -82,54 +88,92 @@ public class Scythe {
 
   @SuppressWarnings("unchecked")
   private static Object getOptionValue(String[] cliArgs, Option option) {
-    final Optional<String> optionalValue = getOptionValueFromCliArgs(cliArgs, option);
 
-    if (!option.required() && !optionalValue.isPresent()) {
-      return null;
-    }
-
-    if (optionalValue.isPresent()) {
-      if (option.isFlag()) {
-        return parseBoolean(optionalValue.get());
+    if (option.multiple()) {
+      final List<String> optionValueStrings = getMultipleOptionValuesFromCliArgs(cliArgs, option);
+      if (optionValueStrings.size() > 0) {
+        final List<Object> optionValues = new ArrayList<>();
+        final Class<?> type = option.type();
+        if (Number.class.isAssignableFrom(type)) {
+          for (String value : optionValueStrings) {
+            optionValues.add(parseNumber((Class<? extends Number>) type, value));
+          }
+        } else {
+          optionValues.addAll(optionValueStrings);
+        }
+        return optionValues;
       }
 
-      final Class<?> type = option.type();
-      if (Number.class.isAssignableFrom(type)) {
-        return parseNumber((Class<? extends Number>) type, optionalValue.get());
-      } else { // Just fall back to string.
-        return optionalValue.get();
+    } else {
+      final String optionValue = getSingleOptionValueFromCliArgs(cliArgs, option);
+      if (optionValue != null) {
+        if (option.isFlag()) {
+          return parseBoolean(optionValue);
+        }
+
+        final Class<?> type = option.type();
+        if (Number.class.isAssignableFrom(type)) {
+          return parseNumber((Class<? extends Number>) type, optionValue);
+        } else { // Just fall back to string.
+          return optionValue;
+        }
       }
     }
-    return Optional.empty();
+
+    return null;
   }
 
   /**
-   * Get the value for an option from the passed command line arguments.
+   * Get the value for a single option from the passed command line arguments.
    *
    * @param args The command line arguments.
    * @param option The option to get from the cli args.
    * @return The string representation of the option value.
    */
-  private static Optional<String> getOptionValueFromCliArgs(String[] args, Option option) {
+  private static String getSingleOptionValueFromCliArgs(String[] args, Option option) {
     final String optionName = option.name();
 
     for (int i = 0; i < args.length; i++) {
       if (args[i].equals(optionName)) {
         if (option.isFlag()) {
-          return Optional.of("true");
+          return "true";
         }
 
         if (i + 2 > args.length) {
           throw new IllegalArgumentException("Option values must appear after the option name");
         }
-        return Optional.of(args[i + 1]);
+        return args[i + 1];
       }
     }
 
     if (option.required()) {
       throw new RequiredOptionException("Required option " + optionName + " not found");
     }
-    return Optional.empty();
+    return null;
+  }
+
+  private static List<String> getMultipleOptionValuesFromCliArgs(String[] args, Option option) {
+    final String optionName = option.name();
+    final List<String> values = new ArrayList<>();
+
+    for (int i = 0; i < args.length; i++) {
+      if (args[i].equals(optionName)) {
+        if (option.isFlag()) {
+          throw new IllegalArgumentException("Cannot have multiple values for flags.");
+        }
+
+        if (i + 2 > args.length) {
+          throw new IllegalArgumentException("Option values must appear after the option name");
+        }
+        values.add(args[i + 1]);
+      }
+    }
+
+    if (option.required() && values.size() < 1) {
+      throw new RequiredOptionException("Required option " + optionName + " not found");
+    }
+
+    return values;
   }
 
   /**
