@@ -24,7 +24,8 @@ import java.util.stream.Collectors;
  */
 public class Scythe {
 
-  private static final Comparator<Option> optionComparator = Comparator.comparingInt(Option::order);
+  private static final Comparator<Option> OPTION_COMPARATOR =
+      Comparator.comparingInt(Option::order);
   private final String[] cliArgs;
   private final Class<?> mainClass;
 
@@ -79,7 +80,7 @@ public class Scythe {
    * @return A mapping of an {@code Option} to the value found in the command line arguments.
    */
   private Map<Option, Object> parseOptions(List<Option> options) {
-    final Map<Option, Object> mappings = new TreeMap<>(optionComparator);
+    final Map<Option, Object> mappings = new TreeMap<>(OPTION_COMPARATOR);
     for (Option option : options) {
       mappings.put(option, getOptionValue(cliArgs, option));
     }
@@ -113,8 +114,27 @@ public class Scythe {
 
         final Class<?> type = option.type();
         if (Number.class.isAssignableFrom(type)) {
+
+          if (option.nargs() > 0) {
+            final String[] numberStrings = optionValue.split(" ");
+
+            correctNargs(option, numberStrings.length);
+            final List<Number> numbers = new ArrayList<>();
+
+            for (String numberString : numberStrings) {
+              numbers.add(parseNumber((Class<? extends Number>) type, numberString));
+            }
+
+            return numbers;
+          }
           return parseNumber((Class<? extends Number>) type, optionValue);
         } else { // Just fall back to string.
+          if (option.nargs() > 0) {
+            final String[] strings = optionValue.split(" ");
+            correctNargs(option, strings.length);
+
+            return Arrays.asList(strings);
+          }
           return optionValue;
         }
       }
@@ -211,5 +231,12 @@ public class Scythe {
    */
   private static String[] sanitize(String[] args) {
     return Arrays.stream(args).map(String::trim).collect(Collectors.toList()).toArray(args);
+  }
+
+  private static void correctNargs(Option option, int actual) {
+    if (option.nargs() != actual) {
+      throw new IllegalArgumentException(
+          option.name() + " requires " + option.nargs() + " values, received " + actual);
+    }
   }
 }

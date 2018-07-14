@@ -41,8 +41,6 @@ For example:
 
 ```java
 class Main {
-
-  Object options;
   
   // args = ["--name", "Stephen", "--age", "100"]
   public static void main(String[] args) {

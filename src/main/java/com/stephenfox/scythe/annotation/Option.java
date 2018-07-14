@@ -18,4 +18,5 @@ public @interface Option {
   boolean required() default true;
   int order() default -1;
   boolean multiple() default false;
+  int nargs() default 0;
 }
