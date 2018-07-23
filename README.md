@@ -5,14 +5,14 @@ Scythe is a command line argument parser for Java.
 ### Documentation
 - Commands
 - Options
--- Supported types
--- Single value options
--- Multi value options
--- Multiple options
--- Flags
--- Required options
--- Default options
--- Option Ordering
+    - Supported types
+    - Single value options
+    - Multi value options
+    - Multiple options
+    - Flags
+    - Required options
+    - Default options
+    - Option Ordering
 
 The basic building block of the Scythe parser are options. To create an option use the `Option` annotation, the `Option` annotation can be declared at fields and methods. Depending on declaration site of the `Option` the option values parsed from the cli will be passed to your application in different ways. If the annotations are declared at a field then a call to Scyth will return a mapping of option names to the corresponding values. 
 
