@@ -3,7 +3,7 @@ import com.stephenfox.scythe.annotation.Option;
 
 public class Main {
 
-  @Option(name = "-e", nargs = 3)
+  @Option(name = "-e", nargs = 3, type = Integer.class)
   Object cliOptions;
 
   public static void main(String[] args) {

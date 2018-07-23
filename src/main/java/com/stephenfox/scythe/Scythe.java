@@ -82,14 +82,13 @@ public class Scythe {
   private Map<Option, Object> parseOptions(List<Option> options) {
     final Map<Option, Object> mappings = new TreeMap<>(OPTION_COMPARATOR);
     for (Option option : options) {
-      mappings.put(option, getOptionValue(cliArgs, option));
+      mappings.put(option, parseOption(cliArgs, option));
     }
     return mappings;
   }
 
   @SuppressWarnings("unchecked")
-  private static Object getOptionValue(String[] cliArgs, Option option) {
-
+  private static Object parseOption(String[] cliArgs, Option option) {
     if (option.multiple()) {
       final List<String> optionValueStrings = getMultipleOptionValuesFromCliArgs(cliArgs, option);
       if (optionValueStrings.size() > 0) {
@@ -104,7 +103,6 @@ public class Scythe {
         }
         return optionValues;
       }
-
     } else {
       final String optionValue = getSingleOptionValueFromCliArgs(cliArgs, option);
       if (optionValue != null) {
@@ -112,6 +110,7 @@ public class Scythe {
           return parseBoolean(optionValue);
         }
 
+        // TODO: Add support for custom type parsing.
         final Class<?> type = option.type();
         if (Number.class.isAssignableFrom(type)) {
 
@@ -144,7 +143,8 @@ public class Scythe {
   }
 
   /**
-   * Get the value for a single option from the passed command line arguments.
+   * Get the value for a single option from the passed command line arguments, this also includes
+   * options that are multi valued.
    *
    * @param args The command line arguments.
    * @param option The option to get from the cli args.
@@ -162,6 +162,7 @@ public class Scythe {
         if (i + 2 > args.length) {
           throw new IllegalArgumentException("Option values must appear after the option name");
         }
+
         return args[i + 1];
       }
     }
@@ -172,6 +173,13 @@ public class Scythe {
     return null;
   }
 
+  /**
+   * Retrieve multiple option value pairs. For example --env HOST --env PORT
+   *
+   * @param args The command line args.
+   * @param option The option to retrieve.
+   * @return A list of all values that appeared for each occurence of the option.
+   */
   private static List<String> getMultipleOptionValuesFromCliArgs(String[] args, Option option) {
     final String optionName = option.name();
     final List<String> values = new ArrayList<>();
