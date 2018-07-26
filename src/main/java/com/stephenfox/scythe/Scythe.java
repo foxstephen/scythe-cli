@@ -39,9 +39,6 @@ public class Scythe {
   }
 
   public Map<String, Object> parse() {
-    if (cliArgs.length < 1) {
-      return Collections.emptyMap();
-    }
 
     // If annotations were declared via a field, parse them.
     final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, mainClass);
@@ -117,7 +114,7 @@ public class Scythe {
           if (option.nargs() > 0) {
             final String[] numberStrings = optionValue.split(" ");
 
-            correctNargs(option, numberStrings.length);
+            correctNargs(option, numberStrings);
             final List<Number> numbers = new ArrayList<>();
 
             for (String numberString : numberStrings) {
@@ -130,7 +127,7 @@ public class Scythe {
         } else { // Just fall back to string.
           if (option.nargs() > 0) {
             final String[] strings = optionValue.split(" ");
-            correctNargs(option, strings.length);
+            correctNargs(option, strings);
 
             return Arrays.asList(strings);
           }
@@ -166,7 +163,9 @@ public class Scythe {
         return args[i + 1];
       }
     }
-
+    if (option.isFlag()) {
+      return "false"; // No flag was found. Therefore the flag is false.
+    }
     if (option.required()) {
       throw new RequiredOptionException("Required option " + optionName + " not found");
     }
@@ -241,10 +240,15 @@ public class Scythe {
     return Arrays.stream(args).map(String::trim).collect(Collectors.toList()).toArray(args);
   }
 
-  private static void correctNargs(Option option, int actual) {
-    if (option.nargs() != actual) {
+  private static void correctNargs(Option option, String[] args) {
+    if (args.length != option.nargs()) {
+      // For the case where nothing was passed and args is just an empty string.
+      if (args.length == 1 && args[0].isEmpty()) {
+        throw new IllegalArgumentException(
+            option.name() + " requires " + option.nargs() + " values, received 0");
+      }
       throw new IllegalArgumentException(
-          option.name() + " requires " + option.nargs() + " values, received " + actual);
+          option.name() + " requires " + option.nargs() + " values, received " + args.length);
     }
   }
 }

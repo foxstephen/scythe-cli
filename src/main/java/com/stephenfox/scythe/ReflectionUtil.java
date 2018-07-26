@@ -5,6 +5,7 @@ import com.stephenfox.scythe.annotation.Option;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -77,6 +78,9 @@ class ReflectionUtil {
       foundAnnotations.addAll(Arrays.asList(annotations));
 
       if (foundAnnotations.size() > 0) {
+        if (!Modifier.isStatic(m.getModifiers())) {
+          throw new InvalidMethodException("Annotations declared at methods must be static.");
+        }
         return Optional.of(new MethodAnnotationPair<>(m, foundAnnotations));
       }
     }
