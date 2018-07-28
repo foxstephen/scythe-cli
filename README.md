@@ -1,5 +1,8 @@
 # scythe-cli
 
+
+![](scythe.png )
+
 Scythe is a command line argument parser for Java.
 
 ### Documentation
