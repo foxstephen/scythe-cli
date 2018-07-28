@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Before;
 import org.junit.Test;
 
 public class ScytheTest {
@@ -156,16 +157,37 @@ public class ScytheTest {
   // ---------------------------------------------
   private static final List<String> parsedArgsFromMethodCall = new ArrayList<>(2);
 
-  @Option(name = "--forename", order = 1)
-  @Option(name = "--surname", order = 2)
-  public static void main(String forename, String surname) {
-    parsedArgsFromMethodCall.add(forename);
-    parsedArgsFromMethodCall.add(surname);
+  @Before
+  public void before() {
+    parsedArgsFromMethodCall.clear();
+  }
+
+  private static class Main1 {
+    @Option(name = "--forename", order = 1)
+    @Option(name = "--surname", order = 2)
+    public static void main(String forename, String surname) {
+      parsedArgsFromMethodCall.add(forename);
+      parsedArgsFromMethodCall.add(surname);
+    }
+  }
+
+  private static class Main2 {
+    @Option(name = "--host")
+    public static void mainWithNoSortOrder(String host) {
+      parsedArgsFromMethodCall.add(host);
+    }
+  }
+
+  private static class Main3 {
+    @Option(name = "--host", order = -2)
+    public static void mainWithNoSortOrder(String host) {
+      parsedArgsFromMethodCall.add(host);
+    }
   }
 
   @Test
   public void testParsedArgsMethodCall() {
-    Scythe.cli(args("--forename", "Stephen", "--surname", "Fox"), ScytheTest.class).parse();
+    Scythe.cli(args("--forename", "Stephen", "--surname", "Fox"), Main1.class).parse();
 
     assertEquals(2, parsedArgsFromMethodCall.size());
     assertEquals("Stephen", parsedArgsFromMethodCall.get(0));
@@ -181,5 +203,15 @@ public class ScytheTest {
           public void main(String forename, String surname) {}
         };
     Scythe.cli(args("--forename", "Stephen", "--surname", "Fox"), clazz.getClass()).parse();
+  }
+
+  @Test(expected = SortOrderException.class)
+  public void testParsedArgsMethodCallDefinedSortOrder() {
+    Scythe.cli(args("--host", "127.0.0.1"), Main2.class).parse();
+  }
+
+  @Test(expected = SortOrderException.class)
+  public void testParsedArgsMethodCallInvalidSortOrder() {
+    Scythe.cli(args("--host", "127.0.0.1"), Main3.class).parse();
   }
 }

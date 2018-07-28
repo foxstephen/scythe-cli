@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
 public @interface Option {
 
-  String name() default "";
+  String name();
   String help() default "";
   Class type() default String.class;
   boolean isFlag() default false;

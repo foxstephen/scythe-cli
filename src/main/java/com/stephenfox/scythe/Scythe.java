@@ -79,6 +79,17 @@ public class Scythe {
   private Map<Option, Object> parseOptions(List<Option> options) {
     final Map<Option, Object> mappings = new TreeMap<>(OPTION_COMPARATOR);
     for (Option option : options) {
+      if (option.order() == -1) {
+        throw new SortOrderException(
+            "No sort order defined for option: "
+                + option.name()
+                + ". Please ensure all options defined at method level have "
+                + "a order set.");
+      }
+
+      if (option.order() < -1) {
+        throw new SortOrderException("Invalid order " + option.order() + ", orders must be >= 0");
+      }
       mappings.put(option, parseOption(cliArgs, option));
     }
     return mappings;
