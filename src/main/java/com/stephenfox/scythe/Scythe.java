@@ -8,7 +8,6 @@ import static java.lang.annotation.ElementType.METHOD;
 import com.stephenfox.scythe.annotation.Option;
 
 import java.lang.annotation.ElementType;
-import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -81,24 +80,29 @@ public class Scythe {
    * @return A mapping of an {@code Option} to the value found in the command line arguments.
    */
   private Map<Option, Object> parseOptions(List<Option> options, ElementType declaredAt) {
-    final Map<Option, Object> mappings = new TreeMap<>(OPTION_COMPARATOR);
-    for (Option option : options) {
-      if (declaredAt == METHOD) {
+    final Map<Option, Object> mappings;
+    if (declaredAt == METHOD) {
+      mappings = new TreeMap<>(OPTION_COMPARATOR);
+      for (Option option : options) {
         if (option.order() == -1) {
           throw new SortOrderException(
               "No sort order defined for option: "
                   + option.name()
                   + ". Please ensure all options defined at method level have "
                   + "an order set.");
-        }
-
-        if (option.order() < -1) {
+        } else if (option.order() < -1) {
           throw new SortOrderException("Invalid order " + option.order() + ", orders must be >= 0");
         }
+        mappings.put(option, parseOption(cliArgs, option));
       }
 
-      mappings.put(option, parseOption(cliArgs, option));
+    } else {
+      mappings = new HashMap<>(options.size());
+      for (Option option : options) {
+        mappings.put(option, parseOption(cliArgs, option));
+      }
     }
+
     return mappings;
   }
 
@@ -229,7 +233,9 @@ public class Scythe {
    */
   private static Number parseNumber(Class<? extends Number> numberClass, String optionValue) {
     final Number numberValue;
-    if (numberClass.equals(Short.class)) {
+    if (numberClass.equals(Byte.class)) {
+      numberValue = Byte.valueOf(optionValue);
+    } else if (numberClass.equals(Short.class)) {
       numberValue = Short.valueOf(optionValue);
     } else if (numberClass.equals(Integer.class)) {
       numberValue = Integer.valueOf(optionValue);

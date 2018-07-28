@@ -218,4 +218,112 @@ public class ScytheTest {
   public void testParsedArgsMethodCallInvalidSortOrder() {
     Scythe.cli(args("--host", "127.0.0.1"), Main3.class).parse();
   }
+
+  // ---------------------------------------------
+  // Test types.
+  // ---------------------------------------------
+  @Test
+  public void testTypeString() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--forename")
+          @Option(name = "--surname")
+          private Object field;
+        };
+
+    final Map<String, Object> parse =
+        Scythe.cli(args("--forename", "Stephen", "--surname", "Fox"), clazz.getClass()).parse();
+    assertEquals("Stephen", parse.get("--forename"));
+    assertEquals("Fox", parse.get("--surname"));
+  }
+
+  @Test
+  public void testTypeByte() {
+    final Object clazz =
+      new Object() {
+        @Option(name = "--a", type = Byte.class)
+        @Option(name = "--b", type = Byte.class)
+        private Object field;
+      };
+
+    final Map<String, Object> parse =
+      Scythe.cli(args("--a", "1", "--b", "2"), clazz.getClass()).parse();
+    assertEquals(((byte) 1), parse.get("--a"));
+    assertEquals(((byte) 2), parse.get("--b"));
+  }
+
+  @Test
+  public void testTypeShort() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--a", type = Short.class)
+          @Option(name = "--b", type = Short.class)
+          private Object field;
+        };
+
+    final Map<String, Object> parse =
+        Scythe.cli(args("--a", "1", "--b", "2"), clazz.getClass()).parse();
+    assertEquals(((short) 1), parse.get("--a"));
+    assertEquals(((short) 2), parse.get("--b"));
+  }
+
+  @Test
+  public void testTypeInteger() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--a", type = Integer.class)
+          @Option(name = "--b", type = Integer.class)
+          private Object field;
+        };
+
+    final Map<String, Object> parse =
+        Scythe.cli(args("--a", "1", "--b", "2"), clazz.getClass()).parse();
+    assertEquals(1, parse.get("--a"));
+    assertEquals(2, parse.get("--b"));
+  }
+
+  @Test
+  public void testTypeLong() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--a", type = Long.class)
+          @Option(name = "--b", type = Long.class)
+          private Object field;
+        };
+
+    final Map<String, Object> parse =
+        Scythe.cli(args("--a", "1", "--b", "2"), clazz.getClass()).parse();
+    assertEquals(1L, parse.get("--a"));
+    assertEquals(2L, parse.get("--b"));
+  }
+
+  @Test
+  public void testTypeFloat() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--a", type = Float.class)
+          @Option(name = "--b", type = Float.class)
+          private Object field;
+        };
+
+    final Map<String, Object> parse =
+        Scythe.cli(args("--a", "1.0", "--b", "2"), clazz.getClass()).parse();
+    assertEquals(1F, parse.get("--a"));
+    assertEquals(2F, parse.get("--b"));
+  }
+
+  @Test
+  public void testTypeDouble() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--a", type = Double.class)
+          @Option(name = "--b", type = Double.class)
+          private Object field;
+        };
+
+    final Map<String, Object> parse =
+        Scythe.cli(args("--a", "1.0", "--b", "2"), clazz.getClass()).parse();
+    assertEquals(1D, parse.get("--a"));
+    assertEquals(2D, parse.get("--b"));
+  }
 }
