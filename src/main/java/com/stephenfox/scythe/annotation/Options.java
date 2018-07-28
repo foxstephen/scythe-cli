@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * @author Stephen Fox.
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+@Target({ElementType.FIELD, ElementType.METHOD})
 public @interface Options {
   Option[] value();
 }

@@ -8,15 +8,21 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Repeatable(Options.class)
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.TYPE})
+@Target({ElementType.FIELD, ElementType.METHOD}) // TODO: Add support for Type target level.
 public @interface Option {
-
   String name();
+
   String help() default "";
+
   Class type() default String.class;
+
   boolean isFlag() default false;
+
   boolean required() default true;
+
   int order() default -1;
+
   boolean multiple() default false;
+
   int nargs() default 0;
 }

@@ -119,17 +119,6 @@ public class ScytheTest {
     Scythe.cli(args("--names", ""), clazz.getClass()).parse();
   }
 
-  @Test(expected = RequiredOptionException.class)
-  public void testOptionNargsWithNothingPassed() {
-    final Object clazz =
-        new Object() {
-          @Option(name = "--names", nargs = 2)
-          private Object field;
-        };
-
-    Scythe.cli(args(), clazz.getClass()).parse();
-  }
-
   @Test(expected = IllegalArgumentException.class)
   public void testOptionNargsWithTooManyArgs() {
     final Object clazz =
@@ -141,11 +130,26 @@ public class ScytheTest {
     Scythe.cli(args("--names", "stephen steve john"), clazz.getClass()).parse();
   }
 
+  // ---------------------------------------------
+  // Test required options.
+  // ---------------------------------------------
   @Test
-  public void testOptionNargsNotRequired() {
+  public void testOptionRequiredNotRequired() {
     final Object clazz =
         new Object() {
-          @Option(name = "--names", nargs = 2, required = false)
+          @Option(name = "--port", required = false)
+          private Object field;
+        };
+
+    final Map<String, Object> parse = Scythe.cli(args(), clazz.getClass()).parse();
+    assertNull(parse.get("--port"));
+  }
+
+  @Test(expected = RequiredOptionException.class)
+  public void testOptionRequiredWithNothingPassed() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--names")
           private Object field;
         };
 

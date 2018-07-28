@@ -2,13 +2,16 @@ package com.stephenfox.scythe;
 
 import static com.stephenfox.scythe.ReflectionUtil.getFieldAnnotations;
 import static com.stephenfox.scythe.ReflectionUtil.getMethodAnnotations;
+import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.METHOD;
 
 import com.stephenfox.scythe.annotation.Option;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -43,7 +46,7 @@ public class Scythe {
     // If annotations were declared via a field, parse them.
     final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, mainClass);
     if (fieldAnnotations.size() > 0) {
-      final Map<Option, Object> parsedOptions = parseOptions(fieldAnnotations);
+      final Map<Option, Object> parsedOptions = parseOptions(fieldAnnotations, FIELD);
       final Map<String, Object> map = new HashMap<>(parsedOptions.size());
       for (Map.Entry<Option, Object> entry : parsedOptions.entrySet()) {
         map.put(entry.getKey().name(), entry.getValue());
@@ -57,7 +60,8 @@ public class Scythe {
     if (methodAnnotations.isPresent()) {
       final ReflectionUtil.MethodAnnotationPair<Option> methodAnnotationPair =
           methodAnnotations.get();
-      final Map<Option, Object> parsedOptions = parseOptions(methodAnnotationPair.annotations);
+      final Map<Option, Object> parsedOptions =
+          parseOptions(methodAnnotationPair.annotations, METHOD);
       final Object[] values = parsedOptions.values().toArray();
 
       try {
@@ -76,20 +80,23 @@ public class Scythe {
    * @param options The option annotations declared.
    * @return A mapping of an {@code Option} to the value found in the command line arguments.
    */
-  private Map<Option, Object> parseOptions(List<Option> options) {
+  private Map<Option, Object> parseOptions(List<Option> options, ElementType declaredAt) {
     final Map<Option, Object> mappings = new TreeMap<>(OPTION_COMPARATOR);
     for (Option option : options) {
-      if (option.order() == -1) {
-        throw new SortOrderException(
-            "No sort order defined for option: "
-                + option.name()
-                + ". Please ensure all options defined at method level have "
-                + "a order set.");
+      if (declaredAt == METHOD) {
+        if (option.order() == -1) {
+          throw new SortOrderException(
+              "No sort order defined for option: "
+                  + option.name()
+                  + ". Please ensure all options defined at method level have "
+                  + "an order set.");
+        }
+
+        if (option.order() < -1) {
+          throw new SortOrderException("Invalid order " + option.order() + ", orders must be >= 0");
+        }
       }
 
-      if (option.order() < -1) {
-        throw new SortOrderException("Invalid order " + option.order() + ", orders must be >= 0");
-      }
       mappings.put(option, parseOption(cliArgs, option));
     }
     return mappings;
