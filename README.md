@@ -56,7 +56,7 @@ class Main {
 }
 ```
 
-### Supported type
+### Supported types
 Scythe supports `String` and all `Number` subtypes i.e. `Integer`, `Float`, `Double` etc.
 ```java
 @Option(name="--int", type=Integer.class)
