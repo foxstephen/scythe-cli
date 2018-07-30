@@ -25,17 +25,17 @@ public @interface Option {
    * have many aliases and the returned map is being used from a call to {@link Scythe#parse()} then
    * each alias will have an entry within the map.
    *
-   * <pre>
-   *    @Option(name="--environment", aliases={"--env", "-e"})
-   *    Object field;
+   * <pre>{@code
+   * @Option(name="--environment", aliases={"--env", "-e"})
+   * Object field;
    *
-   *    public static void main(String[] args) {
-   *        Map<String, Object> parsed = Scythe.cli(Main.class).parse(args);
-   *        parsed.get("--environment"); // Returns value.
-   *        parsed.get("--env"); // Returns value.
-   *        parsed.get("-e"); // Returns value.
-   *    }
-   * </pre>
+   * public static void main(String[] args) {
+   *   Map<String, Object> parsed = Scythe.cli(Main.class).parse(args);
+   *   parsed.get("--environment"); // Returns value.
+   *   parsed.get("--env"); // Returns value.
+   *   parsed.get("-e"); // Returns value.
+   * }
+   * }</pre>
    */
   String[] aliases() default {};
 
@@ -74,14 +74,15 @@ public @interface Option {
    * which sequence the options will be passed to the method. In the example below `--forename` will
    * be passed as the first argument and `--surname` will be passed as the second argument.
    *
-   * <pre>
-   *    @Option(name="--forename", order=1)
-   *    @Option(name="--surname", order=2)
-   *    public static void main(String forename, String surname) {
-   *      System.out.println(forename);
-   *      System.out.println(surname);
-   *    }
-   * </pre>
+   * <pre>{@code
+   * @Option(name="--forename", order=1)
+   * @Option(name="--surname", order=2)
+   * public static void main(String forename, String surname) {
+   *   System.out.println(forename);
+   *   System.out.println(surname);
+   * }
+   *
+   * }</pre>
    *
    * It is important to note that any method that has {@code Option} declared, must be static and
    * greater than or equal to 0.
