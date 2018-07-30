@@ -90,8 +90,12 @@ $ opts --host 127.0.0.1 --port 8080
 ```
 
 ### Multi Value Options
+Multi value options allow for multiple values to be assign to one option.
+By using `nargs=2` we expect the `--dimensions` option to have two values.
 ```
-TODO
+@Options(name="--dimensions", nargs=2, type=Integer.class)
+
+$ nargs --dimensions 2 4
 ```
 
 ### Multiple Options
