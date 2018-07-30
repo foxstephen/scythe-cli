@@ -9,6 +9,8 @@ import static java.lang.annotation.ElementType.METHOD;
 import com.stephenfox.scythe.annotation.Option;
 
 import java.lang.annotation.ElementType;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -152,14 +154,32 @@ public class Scythe {
     if (option.multiple()) {
       final List<String> optionValueStrings = getMultipleOptionValuesFromCliArgs(cliArgs, option);
       if (optionValueStrings.size() > 0) {
-        final List<Object> optionValues = new ArrayList<>();
+        final List<Object> optionValues = new ArrayList<>(optionValueStrings.size());
         final Class<?> type = option.type();
         if (Number.class.isAssignableFrom(type)) {
           for (String value : optionValueStrings) {
             optionValues.add(parseNumber((Class<? extends Number>) type, value));
           }
-        } else {
+        } else if (String.class.isAssignableFrom(type)) {
           optionValues.addAll(optionValueStrings);
+        } else {
+          final Constructor<?> constructor;
+          try {
+            constructor = type.getDeclaredConstructor(String.class);
+          } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+          }
+
+          for (String value : optionValueStrings) {
+            try {
+              constructor.setAccessible(true);
+              optionValues.add(constructor.newInstance(value));
+            } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException e) {
+              throw new RuntimeException(e);
+            }
+          }
         }
         return optionValues;
       }
@@ -173,21 +193,18 @@ public class Scythe {
         // TODO: Add support for custom type parsing.
         final Class<?> type = option.type();
         if (Number.class.isAssignableFrom(type)) {
-
           if (option.nargs() > 0) {
             final String[] numberStrings = optionValue.split(" ");
-
             correctNargs(option, numberStrings);
-            final List<Number> numbers = new ArrayList<>();
+            final List<Number> numbers = new ArrayList<>(numberStrings.length);
 
             for (String numberString : numberStrings) {
               numbers.add(parseNumber((Class<? extends Number>) type, numberString));
             }
-
             return numbers;
           }
           return parseNumber((Class<? extends Number>) type, optionValue);
-        } else { // Just fall back to string.
+        } else if (String.class.isAssignableFrom(type)) {
           if (option.nargs() > 0) {
             final String[] strings = optionValue.split(" ");
             correctNargs(option, strings);
@@ -195,6 +212,22 @@ public class Scythe {
             return Arrays.asList(strings);
           }
           return optionValue;
+        } else {
+          if (option.nargs() > 0) {
+            throw new UnsupportedOperationException(
+                "Currently custom types are not supported with `nargs`");
+          } else {
+            try {
+              final Constructor<?> constructor = type.getDeclaredConstructor(String.class);
+              constructor.setAccessible(true);
+              return constructor.newInstance(optionValue);
+            } catch (InstantiationException
+                | IllegalAccessException
+                | InvocationTargetException
+                | NoSuchMethodException e) {
+              throw new RuntimeException(e);
+            }
+          }
         }
       }
     }

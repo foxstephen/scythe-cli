@@ -50,6 +50,9 @@ public @interface Option {
   /**
    * Every option must have a type in order for it to be correctly parsed from the command line
    * arguments or via environment variables.
+   *
+   * <p>Custom types are supported, however they must have a default constructor that will take a
+   * {@code String} as an argument, where the value from the cli args will be passed.
    */
   Class type() default String.class;
 

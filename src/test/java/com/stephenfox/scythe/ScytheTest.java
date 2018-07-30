@@ -7,6 +7,7 @@ import com.stephenfox.scythe.annotation.Option;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -327,27 +328,75 @@ public class ScytheTest {
     assertEquals(2D, parse.get("--b"));
   }
 
+  private static class CustomClass {
+    private final String string;
+
+    CustomClass(String string) {
+      this.string = string;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      CustomClass that = (CustomClass) o;
+      return Objects.equals(string, that.string);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(string);
+    }
+  }
+
   @Test
-  public void testString() {
+  public void testCustomType() {
     final Object clazz =
         new Object() {
-          @Option(
-              name = "--environment",
-              aliases = {"--env", "-e"},
-              help = "Set an environment variable.")
-          @Option(
-              name = "--host",
-              aliases = {"-h"},
-              help = "Set a host.")
-          @Option(
-              name = "--port",
-              aliases = {"-p"},
-              help = "Set a port.",
-              type = Integer.class)
+          @Option(name = "--a", type = CustomClass.class)
           private Object field;
         };
 
-    Scythe.cli(args("-h"), clazz.getClass()).parse();
+    final Map<String, Object> parse = Scythe.cli(args("--a", "hello"), clazz.getClass()).parse();
+    assertEquals(new CustomClass("hello"), parse.get("--a"));
+  }
+
+  // Currently this is not supported, make sure the correct exception is tested for.
+  @SuppressWarnings("unchecked")
+  @Test(expected = UnsupportedOperationException.class)
+  public void testCustomTypeWithNargs() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--a", type = CustomClass.class, nargs = 2)
+          private Object field;
+        };
+
+    final Map<String, Object> parse = Scythe.cli(args("--a", "hello"), clazz.getClass()).parse();
+    Scythe.cli(args("--a", "hello world"), clazz.getClass()).parse();
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testCustomTypeWithMultiOptions() {
+    final Object clazz =
+        new Object() {
+          @Option(name = "--env", type = CustomClass.class, multiple = true)
+          private Object field;
+        };
+
+    final Map<String, Object> parse =
+        Scythe.cli(
+                args("--env", "DOCKER_HOST=127.0.0.1", "--env", "DOCKER_PORT=2375"),
+                clazz.getClass())
+            .parse();
+    assertEquals(
+        new CustomClass("DOCKER_HOST=127.0.0.1"), ((List<CustomClass>) parse.get("--env")).get(0));
+    assertEquals(
+        new CustomClass("DOCKER_PORT=2375"), ((List<CustomClass>) parse.get("--env")).get(1));
   }
 
   // ---------------------------------------------
