@@ -74,7 +74,7 @@ class CustomClass {
 ```
 
 ```java
-@Option(name="--customOption", type=Custom.class)
+@Option(name="--customOption", type=CustomClass.class)
 ```
 
 
