@@ -1,7 +1,7 @@
 # scythe-cli
 [![Build Status](https://travis-ci.org/StephenFox1995/scythe-cli.svg?branch=master)](https://travis-ci.org/StephenFox1995/scythe-cli)
 
-Scythe is a command line argument parser for Java.
+Scythe is a command line and environment parser for Java.
 
 ### Documentation
 - Commands
