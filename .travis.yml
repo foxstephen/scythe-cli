@@ -1,6 +1,8 @@
-
 language: java
-jdk: oraclejdk8
+jdk:
+  - openjdk8
+  - openjdk9
+  - openjdk10
 sudo: false
 
 cache:
