@@ -58,6 +58,25 @@ class Main {
 
 ### Supported type
 Scythe supports `String` and all `Number` subtypes i.e. `Integer`, `Float`, `Double` etc.
+```java
+@Option(name="--int", type=Integer.class)
+@Option(name="--float", type=Float.class)
+@Option(name="--string") // String is default type so not required explicitly.
+```
+
+Scythe also supports custom types, with the requirement that the type has a default constructor.
+
+```java
+class CustomClass {
+  // Required constructor.
+  public CustomClass(String arg) {}
+}
+```
+
+```java
+@Option(name="--customOption", type=Custom.class)
+```
+
 
 ### Single Value Options
 Single value options are options that take a single value.
