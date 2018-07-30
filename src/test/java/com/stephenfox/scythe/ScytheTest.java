@@ -240,14 +240,14 @@ public class ScytheTest {
   @Test
   public void testTypeByte() {
     final Object clazz =
-      new Object() {
-        @Option(name = "--a", type = Byte.class)
-        @Option(name = "--b", type = Byte.class)
-        private Object field;
-      };
+        new Object() {
+          @Option(name = "--a", type = Byte.class)
+          @Option(name = "--b", type = Byte.class)
+          private Object field;
+        };
 
     final Map<String, Object> parse =
-      Scythe.cli(args("--a", "1", "--b", "2"), clazz.getClass()).parse();
+        Scythe.cli(args("--a", "1", "--b", "2"), clazz.getClass()).parse();
     assertEquals(((byte) 1), parse.get("--a"));
     assertEquals(((byte) 2), parse.get("--b"));
   }
@@ -325,5 +325,48 @@ public class ScytheTest {
         Scythe.cli(args("--a", "1.0", "--b", "2"), clazz.getClass()).parse();
     assertEquals(1D, parse.get("--a"));
     assertEquals(2D, parse.get("--b"));
+  }
+
+  @Test
+  public void testString() {
+    final Object clazz =
+        new Object() {
+          @Option(
+              name = "--environment",
+              aliases = {"--env", "-e"},
+              help = "Set an environment variable.")
+          @Option(
+              name = "--host",
+              aliases = {"-h"},
+              help = "Set a host.")
+          @Option(
+              name = "--port",
+              aliases = {"-p"},
+              help = "Set a port.",
+              type = Integer.class)
+          private Object field;
+        };
+
+    Scythe.cli(args("-h"), clazz.getClass()).parse();
+  }
+
+  // ---------------------------------------------
+  // Test aliases.
+  // ---------------------------------------------
+  @Test
+  public void testAliasesWithReturnedMap() {
+    final Object clazz =
+        new Object() {
+          @Option(
+              name = "--environment",
+              aliases = {"--env", "-e"})
+          private Object field;
+        };
+
+    final Map<String, Object> parse1 =
+        Scythe.cli(args("--env", "DOCKER_HOST=127.0.0.1"), clazz.getClass()).parse();
+    assertEquals("DOCKER_HOST=127.0.0.1", parse1.get("--environment"));
+    assertEquals("DOCKER_HOST=127.0.0.1", parse1.get("--env"));
+    assertEquals("DOCKER_HOST=127.0.0.1", parse1.get("-e"));
   }
 }

@@ -2,6 +2,7 @@ package com.stephenfox.scythe;
 
 import static com.stephenfox.scythe.ReflectionUtil.getFieldAnnotations;
 import static com.stephenfox.scythe.ReflectionUtil.getMethodAnnotations;
+import static java.lang.System.exit;
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.METHOD;
 
@@ -41,6 +42,17 @@ public class Scythe {
   }
 
   public Map<String, Object> parse() {
+    if (cliArgs.length > 0 && (cliArgs[0].equals("-h") || cliArgs[0].equals("--help"))) {
+      final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, mainClass);
+      if (fieldAnnotations.size() > 0) {
+        printHelpMessage(fieldAnnotations);
+      }
+
+      final Optional<ReflectionUtil.MethodAnnotationPair<Option>> methodAnnotations =
+          getMethodAnnotations(Option.class, mainClass);
+      methodAnnotations.ifPresent(
+          optionMethodAnnotationPair -> printHelpMessage(optionMethodAnnotationPair.annotations));
+    }
 
     // If annotations were declared via a field, parse them.
     final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, mainClass);
@@ -48,7 +60,12 @@ public class Scythe {
       final Map<Option, Object> parsedOptions = parseOptions(fieldAnnotations, FIELD);
       final Map<String, Object> map = new HashMap<>(parsedOptions.size());
       for (Map.Entry<Option, Object> entry : parsedOptions.entrySet()) {
+        // Put for the name.
         map.put(entry.getKey().name(), entry.getValue());
+        // Now put for each of its alias.
+        for (String alias : entry.getKey().aliases()) {
+          map.put(alias, entry.getValue());
+        }
       }
       return map;
     }
@@ -71,6 +88,30 @@ public class Scythe {
     }
 
     return null;
+  }
+
+  private static void printHelpMessage(List<Option> options) {
+    final StringBuilder prefix = new StringBuilder();
+    final StringBuilder help = new StringBuilder();
+
+    for (Option option : options) {
+      prefix.append(option.name());
+      prefix.append(", ");
+      for (String alias : option.aliases()) {
+        prefix.append(alias);
+        prefix.append(", ");
+      }
+
+      prefix.deleteCharAt(prefix.length() - 1);
+      prefix.deleteCharAt(prefix.length() - 1);
+      prefix.append(" ");
+      final String[] typeSplit = option.type().getName().split("\\.");
+      prefix.append(typeSplit[typeSplit.length - 1 < 0 ? 0 : typeSplit.length - 1]);
+      System.out.printf("%-50s%s%n", prefix.toString(), option.help());
+      prefix.setLength(0);
+    }
+
+    exit(0);
   }
 
   /**
@@ -173,7 +214,8 @@ public class Scythe {
     final String optionName = option.name();
 
     for (int i = 0; i < args.length; i++) {
-      if (args[i].equals(optionName)) {
+      final String argName = args[i];
+      if (argName.equals(optionName) || equalsAnyAlias(argName, option)) {
         if (option.isFlag()) {
           return "true";
         }
@@ -192,6 +234,15 @@ public class Scythe {
       throw new RequiredOptionException("Required option " + optionName + " not found");
     }
     return null;
+  }
+
+  private static boolean equalsAnyAlias(String argName, Option option) {
+    for (String alias : option.aliases()) {
+      if (alias.equals(argName)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
