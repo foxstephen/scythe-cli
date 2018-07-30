@@ -1,8 +1,5 @@
 # scythe-cli
 
-
-![](scythe.png )
-
 Scythe is a command line argument parser for Java.
 
 ### Documentation
@@ -82,7 +79,7 @@ Multiple options allow for the same option to be declared multiple times with di
 ```java
 @Option(name="--env", multiple=true)
 
-$ multi --env DOCKER_HOST --env DOCKER_PORT
+$ multi --env DOCKER_HOST=127.0.0.1 --env DOCKER_PORT=2375
 ```
 
 ### Flags
