@@ -85,7 +85,9 @@ Single value options are options that take a single value.
 ```java
 @Option(name="--host")
 @Option(name="--port", type=Integer.class)
+```
 
+```bash
 $ opts --host 127.0.0.1 --port 8080
 ```
 
@@ -94,7 +96,9 @@ Multi value options allow for multiple values to be assign to one option.
 By using `nargs=2` we expect the `--dimensions` option to have two values.
 ```java
 @Options(name="--dimensions", nargs=2, type=Integer.class)
+```
 
+```bash
 $ nargs --dimensions 2 4
 ```
 
@@ -102,7 +106,9 @@ $ nargs --dimensions 2 4
 Multiple options allow for the same option to be declared multiple times with different values. Scythe will pass values of these to your application inside a `java.util.List` class.
 ```java
 @Option(name="--env", multiple=true)
+```
 
+```bash
 $ multi --env DOCKER_HOST=127.0.0.1 --env DOCKER_PORT=2375
 ```
 
@@ -110,5 +116,12 @@ $ multi --env DOCKER_HOST=127.0.0.1 --env DOCKER_PORT=2375
 Flags are determined either by the presence or absence of the value.
 
 ```java
-@Option(name="isMethod", isFlag=true)
+@Option(name="--reset", isFlag=true)
+```
+
+```bash
+$ flag --reset  # true
+
+$ flag # false
+ 
 ```
