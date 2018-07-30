@@ -10,7 +10,6 @@ import com.stephenfox.scythe.annotation.Option;
 
 import java.lang.annotation.ElementType;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
