@@ -86,4 +86,42 @@ class ReflectionUtil {
     }
     return Optional.empty();
   }
+
+  /**
+   * Attempts to the default values for a field, given some possible names for the field. (This is
+   * required as its possible for each option to have many aliases, all of which could be chosen for
+   * the field name)
+   *
+   * @param clazz The class where the field is declared.
+   * @param possibleNames A list of possible names for the field name.
+   * @return If the field is found, its value will be returned, otherwise null. It could be noted
+   *     that default fields could be set to null as their default value, however it makes sense to
+   *     advise users against this. If default values are to be null then their field shouldn't be
+   *     declared. (This may also need to be investigated, what if users want to have fields with
+   *     the same name as some option and it happens to be null. Maybe an annotation will suffice to
+   *     solve this problem so we only look at annotated fields.)
+   */
+  static Object getDefaultFieldValue(Class<?> clazz, List<String> possibleNames) {
+    for (String possibleName : possibleNames) {
+      if (possibleName.startsWith("--") && possibleName.length() > 2) {
+        possibleName = possibleName.substring(2, possibleName.length());
+      } else if (possibleName.startsWith("-") && possibleName.length() > 1) {
+        possibleName = possibleName.substring(1, possibleName.length());
+      }
+
+      try {
+        final Field declaredField = clazz.getDeclaredField(possibleName);
+        declaredField.setAccessible(true);
+        final Object value = declaredField.get(null);
+        if (value != null) {
+          return value;
+        }
+      } catch (NoSuchFieldException | IllegalAccessException e) {
+        if (possibleNames.indexOf(possibleName) == possibleNames.size() - 1) {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
 }

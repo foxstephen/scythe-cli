@@ -1,5 +1,6 @@
 package com.stephenfox.scythe;
 
+import static com.stephenfox.scythe.ReflectionUtil.getDefaultFieldValue;
 import static com.stephenfox.scythe.ReflectionUtil.getFieldAnnotations;
 import static com.stephenfox.scythe.ReflectionUtil.getMethodAnnotations;
 import static java.lang.System.exit;
@@ -31,32 +32,32 @@ public class Scythe {
   private static final Comparator<Option> OPTION_COMPARATOR =
       Comparator.comparingInt(Option::order);
   private final String[] cliArgs;
-  private final Class<?> mainClass;
+  private final Class<?> clazz;
 
   public static Scythe cli(String[] cliArgs, Class<?> mainClass) {
     return new Scythe(cliArgs, mainClass);
   }
 
-  private Scythe(String[] cliArgs, Class<?> mainClass) {
+  private Scythe(String[] cliArgs, Class<?> clazz) {
     this.cliArgs = sanitize(cliArgs);
-    this.mainClass = mainClass;
+    this.clazz = clazz;
   }
 
   public Map<String, Object> parse() {
     if (cliArgs.length > 0 && (cliArgs[0].equals("-h") || cliArgs[0].equals("--help"))) {
-      final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, mainClass);
+      final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, clazz);
       if (fieldAnnotations.size() > 0) {
         printHelpMessage(fieldAnnotations);
       }
 
       final Optional<ReflectionUtil.MethodAnnotationPair<Option>> methodAnnotations =
-          getMethodAnnotations(Option.class, mainClass);
+          getMethodAnnotations(Option.class, clazz);
       methodAnnotations.ifPresent(
           optionMethodAnnotationPair -> printHelpMessage(optionMethodAnnotationPair.annotations));
     }
 
     // If annotations were declared via a field, parse them.
-    final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, mainClass);
+    final List<Option> fieldAnnotations = getFieldAnnotations(Option.class, clazz);
     if (fieldAnnotations.size() > 0) {
       final Map<Option, Object> parsedOptions = parseOptions(fieldAnnotations, FIELD);
       final Map<String, Object> map = new HashMap<>(parsedOptions.size());
@@ -73,7 +74,7 @@ public class Scythe {
 
     // If annotations were declared via a method, parse them.
     final Optional<ReflectionUtil.MethodAnnotationPair<Option>> methodAnnotations =
-        getMethodAnnotations(Option.class, mainClass);
+        getMethodAnnotations(Option.class, clazz);
     if (methodAnnotations.isPresent()) {
       final ReflectionUtil.MethodAnnotationPair<Option> methodAnnotationPair =
           methodAnnotations.get();
@@ -137,7 +138,6 @@ public class Scythe {
         }
         mappings.put(option, parseOption(cliArgs, option));
       }
-
     } else {
       mappings = new HashMap<>(options.size());
       for (Option option : options) {
@@ -149,7 +149,7 @@ public class Scythe {
   }
 
   @SuppressWarnings("unchecked")
-  private static Object parseOption(String[] cliArgs, Option option) {
+  private Object parseOption(String[] cliArgs, Option option) {
     if (option.multiple()) {
       final List<String> optionValueStrings = getMultipleOptionValuesFromCliArgs(cliArgs, option);
       if (optionValueStrings.size() > 0) {
@@ -171,6 +171,7 @@ public class Scythe {
 
           for (String value : optionValueStrings) {
             try {
+              // TODO: Maybe put this in reflect util.
               constructor.setAccessible(true);
               optionValues.add(constructor.newInstance(value));
             } catch (InstantiationException
@@ -184,48 +185,61 @@ public class Scythe {
       }
     } else {
       final String optionValue = getSingleOptionValueFromCliArgs(cliArgs, option);
-      if (optionValue != null) {
-        if (option.isFlag()) {
-          return parseBoolean(optionValue);
-        }
 
-        // TODO: Add support for custom type parsing.
-        final Class<?> type = option.type();
-        if (Number.class.isAssignableFrom(type)) {
-          if (option.nargs() > 0) {
-            final String[] numberStrings = optionValue.split(" ");
-            correctNargs(option, numberStrings);
-            final List<Number> numbers = new ArrayList<>(numberStrings.length);
+      if (optionValue == null) {
+        final List<String> optionNameAndAliases = new ArrayList<>(1 + option.aliases().length);
+        optionNameAndAliases.add(option.name());
+        optionNameAndAliases.addAll(Arrays.asList(option.aliases()));
 
-            for (String numberString : numberStrings) {
-              numbers.add(parseNumber((Class<? extends Number>) type, numberString));
-            }
-            return numbers;
-          }
-          return parseNumber((Class<? extends Number>) type, optionValue);
-        } else if (String.class.isAssignableFrom(type)) {
-          if (option.nargs() > 0) {
-            final String[] strings = optionValue.split(" ");
-            correctNargs(option, strings);
-
-            return Arrays.asList(strings);
-          }
-          return optionValue;
+        final Object defaultValue = getDefaultFieldValue(clazz, optionNameAndAliases);
+        if (defaultValue != null) {
+          return defaultValue;
+        } else if (option.required()) {
+          throw new RequiredOptionException("Required option " + option.name() + " not found");
         } else {
-          if (option.nargs() > 0) {
-            throw new UnsupportedOperationException(
-                "Currently custom types are not supported with `nargs`");
-          } else {
-            try {
-              final Constructor<?> constructor = type.getDeclaredConstructor(String.class);
-              constructor.setAccessible(true);
-              return constructor.newInstance(optionValue);
-            } catch (InstantiationException
-                | IllegalAccessException
-                | InvocationTargetException
-                | NoSuchMethodException e) {
-              throw new RuntimeException(e);
-            }
+          return null;
+        }
+      }
+
+      if (option.isFlag()) {
+        return parseBoolean(optionValue);
+      }
+
+      final Class<?> type = option.type();
+      if (Number.class.isAssignableFrom(type)) {
+        if (option.nargs() > 0) {
+          final String[] numberStrings = optionValue.split(" ");
+          correctNargs(option, numberStrings);
+          final List<Number> numbers = new ArrayList<>(numberStrings.length);
+
+          for (String numberString : numberStrings) {
+            numbers.add(parseNumber((Class<? extends Number>) type, numberString));
+          }
+          return numbers;
+        }
+        return parseNumber((Class<? extends Number>) type, optionValue);
+      } else if (String.class.isAssignableFrom(type)) {
+        if (option.nargs() > 0) {
+          final String[] strings = optionValue.split(" ");
+          correctNargs(option, strings);
+
+          return Arrays.asList(strings);
+        }
+        return optionValue;
+      } else {
+        if (option.nargs() > 0) {
+          throw new UnsupportedOperationException(
+              "Currently custom types are not supported with `nargs`");
+        } else {
+          try {
+            final Constructor<?> constructor = type.getDeclaredConstructor(String.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(optionValue);
+          } catch (InstantiationException
+              | IllegalAccessException
+              | InvocationTargetException
+              | NoSuchMethodException e) {
+            throw new RuntimeException(e);
           }
         }
       }
@@ -261,9 +275,6 @@ public class Scythe {
     }
     if (option.isFlag()) {
       return "false"; // No flag was found. Therefore the flag is false.
-    }
-    if (option.required()) {
-      throw new RequiredOptionException("Required option " + optionName + " not found");
     }
     return null;
   }

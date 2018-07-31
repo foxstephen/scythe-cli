@@ -1,10 +1,14 @@
 package com.stephenfox.scythe;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.stephenfox.scythe.annotation.Option;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -12,6 +16,7 @@ import java.util.Objects;
 import org.junit.Before;
 import org.junit.Test;
 
+@SuppressWarnings("unused")
 public class ScytheTest {
 
   private static String[] args(String... args) {
@@ -417,5 +422,74 @@ public class ScytheTest {
     assertEquals("DOCKER_HOST=127.0.0.1", parse1.get("--environment"));
     assertEquals("DOCKER_HOST=127.0.0.1", parse1.get("--env"));
     assertEquals("DOCKER_HOST=127.0.0.1", parse1.get("-e"));
+  }
+
+  // ---------------------------------------------
+  // Test default values.
+  // ---------------------------------------------
+
+  private static class Default {
+    @Option(
+        name = "--names",
+        aliases = {"-n"},
+        nargs = 2)
+    @Option(
+        name = "--environment",
+        aliases = {"--env", "-e"})
+    @Option(name = "-kv", type = HashMap.class)
+    private Object options;
+
+    private static String environment = "127.0.0.1";
+    private static List<String> n =
+        new ArrayList<String>() {
+          {
+            add("Stephen");
+            add("John");
+          }
+        };
+    private static Map<String, String> kv =
+        new HashMap<String, String>() {
+          {
+            put("a", "1");
+            put("b", "2");
+          }
+        };
+  }
+
+  @Test
+  public void testDefaultValues() {
+    final Map<String, Object> parse = Scythe.cli(args(), Default.class).parse();
+
+    final List<String> n =
+        new ArrayList<String>() {
+          {
+            add("Stephen");
+            add("John");
+          }
+        };
+
+    final Map<String, String> kv =
+        new HashMap<String, String>() {
+          {
+            put("a", "1");
+            put("b", "2");
+          }
+        };
+
+    assertEquals(n, parse.get("-n"));
+    assertEquals("127.0.0.1", parse.get("--environment"));
+    assertEquals(kv, parse.get("-kv"));
+  }
+
+  private static class DefaultWrongNames {
+    @Option(name = "--environment")
+    private Object options;
+
+    private static String wrongName = "127.0.0.1";
+  }
+
+  @Test(expected = RequiredOptionException.class)
+  public void tetDefaultValuesWithIncorrectName() {
+    final Map<String, Object> parse = Scythe.cli(args(), DefaultWrongNames.class).parse();
   }
 }
