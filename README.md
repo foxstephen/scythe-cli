@@ -7,18 +7,19 @@ Scythe is a command line and environment parser for Java.
 - Commands
     - __TODO__
 - Options
+    - Aliases
     - Supported types
     - Single value options
     - Multi value options
     - Multiple options
     - Flags
     - Required options
-    - Default options __TODO__
+    - Default option values __TODO DOCS__
     - Option Ordering
 - Environment variables
     - __TODO__
 
-The basic building block of the Scythe parser are options. To create an option use the `Option` annotation, the `Option` annotation can be declared at fields and methods. Depending on declaration site of the `Option` the option values parsed from the cli will be passed to your application in different ways. If the annotations are declared at a field then a call to Scyth will return a mapping of option names to the corresponding values. 
+The basic building block of the Scythe parser are options. To create an option use the `Option` annotation, the `Option` annotation can be declared at fields and methods. Depending on declaration site of the `Option` the option values parsed from the cli will be passed to your application in different ways. If the annotations are declared at a field then a call to Scythe will return a mapping of option names to the corresponding values. 
 
 For example:
 
@@ -31,7 +32,7 @@ class Main {
   
   // args = ["--name", "Stephen", "--age", "100"]
   public static void main(String[] args) {
-    final Map<String, Object> values = Scyth.cli(args, Main.class).parse();        
+    final Map<String, Object> values = Scythe.cli(args, Main.class).parse();        
     values.get("--name"); // Stephen
     values.get("--age"); // 100
   }
@@ -48,7 +49,7 @@ class Main {
   
   // args = ["--name", "Stephen", "--age", "100"]
   public static void main(String[] args) {
-    Scyth.cli(args, Main.class).parse();
+    Scythe.cli(args, Main.class).parse();
   }
   
   @Option(name="--name")
@@ -127,3 +128,14 @@ $ flag --reset  # true
 
 $ flag # false
 ```
+
+### Required Options
+Options can be required or optional. By default options are required. If options are not required and no value is given for them then they will be passed as null.
+
+```java
+@Option(name="--gender", required=false)
+@Option(name="--age") // Implicitly required.
+```
+
+### Default Options
+
